@@ -10,7 +10,14 @@ const  Canvas = canvas.Canvas;
 const Image=canvas.Image;
 const ImageData=canvas.ImageData;
 
-faceapi.env.monkeyPatch({ImageData})
+faceapi.env.monkeyPatch({
+  Canvas: HTMLCanvasElement,
+  Image: HTMLImageElement,
+  ImageData: ImageData,
+  Video: HTMLVideoElement,
+  createCanvasElement: () => document.createElement('canvas'),
+  createImageElement: () => document.createElement('img')
+  })
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -61,11 +68,37 @@ public handleImage(webcamImage: WebcamImage): void {
   await faceapi.loadSsdMobilenetv1Model(MODEL_URL)
   await faceapi.loadFaceLandmarkModel(MODEL_URL)
   await faceapi.loadFaceRecognitionModel(MODEL_URL)
-  const input = <HTMLImageElement>this.doc.getElementById("myImage")
-  
-let fullFaceDescriptions = await faceapi.detectAllFaces(input).withFaceLandmarks().withFaceDescriptors()
-
  
+ 
+  }
+
+
+  public async detectFaces(){
+
+    //prepare image to detect  faces and canvas
+    const input = <HTMLImageElement>this.doc.getElementById("myImage")
+    const canvas = <HTMLCanvasElement>this.doc.getElementById("overlay")
+  
+    
+    const displaySize = { width: input.width, height: input.height }
+    faceapi.matchDimensions(canvas, displaySize)
+    
+    let fullFaceDescriptions = await faceapi.detectAllFaces(input).withFaceLandmarks().withFaceDescriptors()
+    fullFaceDescriptions = faceapi.resizeResults(fullFaceDescriptions,input)
+   
+    
+    console.log(input)
+    faceapi.draw.drawDetections(canvas, fullFaceDescriptions)
+    /* Display face landmarks */
+     const detectionsWithLandmarks = await faceapi
+     .detectAllFaces(input).
+     withFaceLandmarks()
+    // resize the detected boxes and landmarks in case your displayed image has a different size than the original
+    const resizedResults = faceapi.resizeResults(detectionsWithLandmarks, displaySize)
+    // draw detections into the canvas
+    faceapi.draw.drawDetections(canvas, resizedResults)
+    // draw the landmarks into the canvas
+    faceapi.draw.drawFaceLandmarks(canvas, resizedResults)
   }
 
 
