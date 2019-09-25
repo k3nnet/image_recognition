@@ -5,7 +5,9 @@ import { Subject, Observable } from 'rxjs';
 import * as canvas from 'canvas';
 import * as $ from 'jquery';
 import { DOCUMENT } from '@angular/common';
-
+import { MtcnnOptions } from 'face-api.js';
+import { ToastrService } from 'ngx-toastr';
+import { MatVideoComponent } from 'mat-video/app/video/video.component';
 
 const Canvas = canvas.Canvas;
 const Image = canvas.Image;
@@ -26,8 +28,9 @@ faceapi.env.monkeyPatch({
 })
 export class AppComponent implements AfterViewInit {
   @Input() cameraName: string = "";
-  // @ViewChild('myImage',{ static: false }) imageInput: HTMLVideoElement;
-  title = 'imageRecognition';
+  
+  video: HTMLVideoElement;
+  title = 'Facial Expressions recognition';
   // tiny_face_detector options
   inputSize = 512;
   scoreThreshold = 0.5;
@@ -35,82 +38,170 @@ export class AppComponent implements AfterViewInit {
   withBoxes = true;
   videoEl;
   stream;
-  // latest snapshot
   public webcamImage: WebcamImage = null;
   private doc: Document
-
   // webcam snapshot trigger
   private trigger: Subject<void> = new Subject<void>();
   // switch to next / previous / specific webcam; true/false: forward/backwards, string: deviceId
   private nextWebcam: Subject<boolean | string> = new Subject<boolean | string>();
-  private input: HTMLVideoElement
-  private canvas:HTMLCanvasElement
-  constructor(@Inject(DOCUMENT) document
+
+  private  inputVideo: HTMLVideoElement
+  private imageCanvas:HTMLCanvasElement
+  private videoCanvas:HTMLCanvasElement
+  public inputImage:HTMLImageElement
+
+  private showVideo:boolean;
+  private loading:boolean;
+  //=====================================================================================================//
+  constructor(@Inject(DOCUMENT) document,private toastr: ToastrService
   ) {
     this.doc = document;
+    //prepare image to detect  faces and canvas
+    this.inputVideo = <HTMLVideoElement>this.doc.getElementById("inputVideo")
+    this.videoCanvas = <HTMLCanvasElement>this.doc.getElementById("overlayVideo")
+    this.showVideo=false;
+    this.loading=false;
+   
   }
 
   ngOnInit() {
    
    //load all the models
    this.loadModels();
-  
+   
+   
+   
 
 
   }
-  public seconds:number ;
-
- public triggerSnapshot(): void {
-   this.seconds = 3;
-   setTimeout(()=>{
-     this.seconds = 2;
-    setTimeout(()=>{
-      this.seconds = 1
-      setTimeout(()=>{
-        this.trigger.next(); 
-        this.seconds = null;
-      },2000)
-    },2000) 
-   },2000)
-      
- }
-
 
 
  async onDetectFaces(){
-      //prepare image to detect  faces and canvas
- const input = <HTMLImageElement>this.doc.getElementById("myImage")
- this.canvas = <HTMLCanvasElement>this.doc.getElementById("overlay")
-      //detects faces
+   this.loading=true;
+  console.log(<HTMLImageElement>this.doc.getElementById("inputImage"))
+      //detects facesim
+      let img=await this.detectFaces(<HTMLImageElement>this.doc.getElementById("inputImage"));
      
-      this.faceRecognition(await this.detectFaces(input),this.canvas)
+      await this.faceRecognition(img,this.imageCanvas)
+      this.loading=false
 
+      
   }
+
+
+
+
   ngAfterViewInit() {
 
 
   }
-  public handleImage(webcamImage: WebcamImage): void {
-    console.info('received webcam image', webcamImage);
-    this.webcamImage = webcamImage;
+
+  public onShowVideo(showVideo){
+    console.log(showVideo)
+    if(showVideo){
+      this.showVideo=false
+    }else{
+      const MODEL_URL = './assets/models/';
+      this.loadVideo(MODEL_URL);
+      this.showVideo=true
+      this.loadModels()
+      
+
+      
+    }
   }
 
+  public startVideoDetection(){
+    console.log(this.inputVideo)
+    
+    
+  }
   async loadModels() {
     // load the models
+    this.loading=true;
     const MODEL_URL = './assets/models/'
 
     await faceapi.loadSsdMobilenetv1Model(MODEL_URL)
     await faceapi.loadFaceLandmarkModel(MODEL_URL)
     await faceapi.loadFaceRecognitionModel(MODEL_URL)
     await faceapi.loadFaceExpressionModel(MODEL_URL)
-    const videoEl =this.doc.getElementById("inputVideo")
-    navigator.getUserMedia(
-      { video: {} },
-      stream => videoEl['srcObject'] = stream,
-      err => console.error(err)
-    )
+
+    if(this.showVideo){
+     console.log("loading models for webcame")
+      this.loadVideo(MODEL_URL);
+    }
+    this.loading=false;
+    this.toastr.success('Models Loaded!');
+  
    
 
+
+  }
+
+  public async loadVideo(MODEL_URL){
+    
+    await faceapi.loadMtcnnModel(MODEL_URL)
+   console.log("loaded model")
+    const videoEl =<HTMLVideoElement>this.doc.getElementById("inputVideo")
+   console.log(videoEl);
+   
+    this.inputVideo=<HTMLVideoElement>videoEl.getElementsByTagName("video")[0]
+   
+    console.log(this.inputVideo)
+   await navigator.getUserMedia(
+      { video: {} },function(stream ){
+       
+        videoEl.getElementsByTagName("video")[0]['srcObject'] = stream
+       
+       
+      },
+      function(err){ console.error(err)}
+    )
+    console.log(this.inputVideo)
+    this.inputVideo.addEventListener('playing', () => {
+      console.log('video playing');
+      
+      this.videoFaceDetection(this.inputVideo)
+      
+    });
+
+  }
+
+ 
+
+  public async videoFaceDetection(input){
+   
+    console.log(input)
+    
+    const mtcnnParams = {
+      // number of scaled versions of the input image passed through the CNN
+        // of the first stage, lower numbers will result in lower inference time,
+        // but will also be less accurate
+        maxNumScales: 10,
+        // scale factor used to calculate the scale steps of the image
+        // pyramid used in stage 1
+        scaleFactor: 0.709,
+        // the score threshold values used to filter the bounding
+        // boxes of stage 1, 2 and 3
+        scoreThresholds: [0.6, 0.7, 0.7],
+        // mininum face size to expect, the higher the faster processing will be,
+        // but smaller faces won't be detected
+            minFaceSize: 200
+    }
+    const options = new faceapi.MtcnnOptions(mtcnnParams)
+    const inputVide =await  this.doc.getElementById('inputVideo');
+   const mtcnnResults = await faceapi.mtcnn(input, options);
+  console.log(inputVide.attributes)
+   let width=400;
+   let height=300;
+   console.log(width,height)
+  
+   const displaySize = { width:width, height:height }
+   faceapi.matchDimensions(<HTMLCanvasElement>this.doc.getElementById('overlayVideo'), displaySize)
+    const fullFaceDescriptions = await faceapi.detectAllFaces(input, options).withFaceLandmarks().withFaceDescriptors()
+    console.log(fullFaceDescriptions)
+       faceapi.draw.drawDetections(<HTMLCanvasElement>this.doc.getElementById('overlayVideo'), fullFaceDescriptions)
+      faceapi.draw.drawFaceLandmarks(<HTMLCanvasElement>this.doc.getElementById('overlayVideo'), fullFaceDescriptions)
 
   }
   
@@ -164,21 +255,30 @@ export class AppComponent implements AfterViewInit {
   public getKeyByValue(object, value) {
     return Object.keys(object).find(key => object[key] === value);
   }
+  
 
-  public async detectFaces(input) {
+
+  public async detectFaces(input:HTMLImageElement) {
 
 
+    this.inputImage=<HTMLImageElement>this.doc.getElementById("inputImage");
+    this.imageCanvas=<HTMLCanvasElement>this.doc.getElementById("overlayImage")
     
-
-    const displaySize = { width: input['width'], height: input['height'] }
-    faceapi.matchDimensions(this.canvas, displaySize)
+    let width=input['width'];
+    let height=input['height'];
+    console.log(width,height)
+   
+    const displaySize = { width:width, height:height }
+    console.log(displaySize);
+    console.log(this.imageCanvas);
+    faceapi.matchDimensions(this.imageCanvas, displaySize)
 
     let fullFaceDescriptions = await faceapi.detectAllFaces(input).withFaceLandmarks().withFaceDescriptors().withFaceExpressions()
     fullFaceDescriptions = faceapi.resizeResults(fullFaceDescriptions, input)
 
 
     console.log(fullFaceDescriptions)
-    faceapi.draw.drawDetections(this.canvas, fullFaceDescriptions)
+    faceapi.draw.drawDetections(this.imageCanvas, fullFaceDescriptions)
     return fullFaceDescriptions;
    
     
