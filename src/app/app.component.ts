@@ -1,4 +1,4 @@
-import { Component, Input, ViewChild, ElementRef, AfterViewInit, Inject } from '@angular/core';
+import { Component, Input, ViewChild, ElementRef, AfterViewInit,OnInit, Inject } from '@angular/core';
 import * as faceapi from 'face-api.js';
 import { WebcamImage, WebcamInitError, WebcamUtil } from 'ngx-webcam';
 import { Subject, Observable } from 'rxjs';
@@ -26,7 +26,7 @@ faceapi.env.monkeyPatch({
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent implements AfterViewInit {
+export class AppComponent implements  OnInit, AfterViewInit {
   @Input() cameraName: string = "";
   
   video: HTMLVideoElement;
@@ -56,9 +56,7 @@ export class AppComponent implements AfterViewInit {
   constructor(@Inject(DOCUMENT) document,private toastr: ToastrService
   ) {
     this.doc = document;
-    //prepare image to detect  faces and canvas
-    this.inputVideo = <HTMLVideoElement>this.doc.getElementById("inputVideo")
-    this.videoCanvas = <HTMLCanvasElement>this.doc.getElementById("overlayVideo")
+    
     this.showVideo=false;
     this.loading=false;
    
@@ -80,7 +78,8 @@ export class AppComponent implements AfterViewInit {
    this.loading=true;
   console.log(<HTMLImageElement>this.doc.getElementById("inputImage"))
       //detects facesim
-      let img=await this.detectFaces(<HTMLImageElement>this.doc.getElementById("inputImage"));
+      let img=<HTMLImageElement>this.doc.getElementById("inputImage");
+      
      
       await this.faceRecognition(img,this.imageCanvas)
       this.loading=false
@@ -92,20 +91,23 @@ export class AppComponent implements AfterViewInit {
 
 
   ngAfterViewInit() {
-
+    //prepare image to detect  faces and canvas
+    this.inputVideo = <HTMLVideoElement>this.doc.getElementById("inputVideo")
+    this.videoCanvas = <HTMLCanvasElement>this.doc.getElementById("overlayVideo")
+    console.log("view loaded")
+    console.log(this.inputVideo);
 
   }
 
-  public onShowVideo(showVideo){
-    console.log(showVideo)
+  public  async onShowVideo(showVideo){
+    console.log(this.doc)
     if(showVideo){
       this.showVideo=false
     }else{
-      const MODEL_URL = './assets/models/';
-      this.loadVideo(MODEL_URL);
-      this.showVideo=true
-      this.loadModels()
-      
+      console.log(this.inputVideo)
+     await this.loadVideo(this.doc,this.videoFaceDetection,this.faceRecognition,this.getKeyByValue)
+    
+     this.showVideo=true
 
       
     }
@@ -125,11 +127,8 @@ export class AppComponent implements AfterViewInit {
     await faceapi.loadFaceLandmarkModel(MODEL_URL)
     await faceapi.loadFaceRecognitionModel(MODEL_URL)
     await faceapi.loadFaceExpressionModel(MODEL_URL)
-
-    if(this.showVideo){
-     console.log("loading models for webcame")
-      this.loadVideo(MODEL_URL);
-    }
+    await faceapi.loadMtcnnModel(MODEL_URL)
+   
     this.loading=false;
     this.toastr.success('Models Loaded!');
   
@@ -138,40 +137,48 @@ export class AppComponent implements AfterViewInit {
 
   }
 
-  public async loadVideo(MODEL_URL){
+  public async loadVideo(doc:Document,videoFaceDetection:any,faceRecognition:any,getKeyByValue:any){
     
-    await faceapi.loadMtcnnModel(MODEL_URL)
-   console.log("loaded model")
-    const videoEl =<HTMLVideoElement>this.doc.getElementById("inputVideo")
-   console.log(videoEl);
-   
-    this.inputVideo=<HTMLVideoElement>videoEl.getElementsByTagName("video")[0]
-   
-    console.log(this.inputVideo)
-   await navigator.getUserMedia(
-      { video: {} },function(stream ){
-       
-        videoEl.getElementsByTagName("video")[0]['srcObject'] = stream
-       
-       
-      },
-      function(err){ console.error(err)}
-    )
-    console.log(this.inputVideo)
-    this.inputVideo.addEventListener('playing', () => {
-      console.log('video playing');
+  //stream back the visual to the UI
+   navigator.getUserMedia({ video: {} }, (stream)=>{
+      console.log("loaded video");
       
-      this.videoFaceDetection(this.inputVideo)
-      
-    });
+      const videoEl = <HTMLVideoElement>doc.getElementById("inputVideo");
+      const canvas=<HTMLCanvasElement>doc.getElementById('overlayVideo');
+     
+      let videoPlayer = <HTMLVideoElement>videoEl.getElementsByTagName("video")[0];
+      console.log(videoPlayer);
+      videoEl.getElementsByTagName("video")[0]['srcObject'] = stream;
 
+      videoPlayer.addEventListener('playing', (videoEl) =>  {
+        console.log(videoEl['srcElement'])
+       
+       setInterval(() => this.faceRecognition(<HTMLVideoElement>videoEl['srcElement'],canvas) ,5000 )
+      });
+        
+    }, function (err) { console.error(err); })
+   
+
+  }
+
+  async myFunction(videoEl) {
+    // run face detection & recognition
+    // ...
+    
+    setTimeout(() => this.myFunction(videoEl))
   }
 
  
 
-  public async videoFaceDetection(input){
+  public async videoFaceDetection(input:HTMLVideoElement,canvas:HTMLCanvasElement,){
    
     console.log(input)
+    let width=400;
+    let height=240;
+
+   console.log(width,height)
+   input['width']=width;
+   input['height']=height;
     
     const mtcnnParams = {
       // number of scaled versions of the input image passed through the CNN
@@ -186,29 +193,35 @@ export class AppComponent implements AfterViewInit {
         scoreThresholds: [0.6, 0.7, 0.7],
         // mininum face size to expect, the higher the faster processing will be,
         // but smaller faces won't be detected
-            minFaceSize: 200
+            minFaceSize: 100
     }
     const options = new faceapi.MtcnnOptions(mtcnnParams)
-    const inputVide =await  this.doc.getElementById('inputVideo');
-   const mtcnnResults = await faceapi.mtcnn(input, options);
-  console.log(inputVide.attributes)
-   let width=400;
-   let height=300;
-   console.log(width,height)
-  
-   const displaySize = { width:width, height:height }
-   faceapi.matchDimensions(<HTMLCanvasElement>this.doc.getElementById('overlayVideo'), displaySize)
-    const fullFaceDescriptions = await faceapi.detectAllFaces(input, options).withFaceLandmarks().withFaceDescriptors()
+    const displaySize = { width:width, height:height }
+    faceapi.matchDimensions(canvas, displaySize)
+
+    //detects faces on a screen
+    let fullFaceDescriptions = await faceapi.detectAllFaces(input, options).withFaceLandmarks().withFaceDescriptors().withFaceExpressions()
     console.log(fullFaceDescriptions)
-       faceapi.draw.drawDetections(<HTMLCanvasElement>this.doc.getElementById('overlayVideo'), fullFaceDescriptions)
-      faceapi.draw.drawFaceLandmarks(<HTMLCanvasElement>this.doc.getElementById('overlayVideo'), fullFaceDescriptions)
+    fullFaceDescriptions = await faceapi.resizeResults(fullFaceDescriptions, input)
+    faceapi.draw.drawDetections(canvas, fullFaceDescriptions)
+
+    return fullFaceDescriptions;
+   
+     
 
   }
   
+  
 
-  public async faceRecognition(fullFaceDescriptions,canvas){
+  public async faceRecognition(videoEl:HTMLVideoElement | HTMLImageElement,canvas:HTMLCanvasElement){
+
+    //detects faces
+    console.log(videoEl)
+    let fullFaceDescriptions=await this.videoFaceDetection(<HTMLVideoElement>videoEl,canvas)
+
+
     const labels = ['sheldon']
-
+    console.log(this.getKeyByValue)
     const labeledFaceDescriptors = await Promise.all(
       labels.map(async label => {
         // fetch image data from urls and convert blob to HTMLImage element
@@ -229,6 +242,7 @@ export class AppComponent implements AfterViewInit {
 
     const maxDescriptorDistance = 0.6
     console.log(labeledFaceDescriptors)
+    console.log(this.getKeyByValue)
   const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, maxDescriptorDistance)
     console.log()
   const results = fullFaceDescriptions.map(function(fd) { 
@@ -236,6 +250,7 @@ export class AppComponent implements AfterViewInit {
     return {faceMatcher:faceMatcher.findBestMatch(fd['descriptor']),faceExpressions:fd['expressions']}
   
   })
+  console.log(this.getKeyByValue)
   console.log(results)
   results.forEach((bestMatch, i) => {
     console.log(bestMatch['faceExpressions']['angry'])
@@ -245,7 +260,7 @@ export class AppComponent implements AfterViewInit {
     
     console.log()
     const box = fullFaceDescriptions[i]['detection']['box']
-    const text = this.getKeyByValue((expressions),max);
+    const text =this.getKeyByValue((expressions),max);
     const drawBox = new faceapi.draw.DrawBox(box, { label: text })
     drawBox.draw(canvas)
   })
