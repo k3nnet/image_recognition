@@ -8,6 +8,8 @@ import { DOCUMENT } from '@angular/common';
 import { MtcnnOptions } from 'face-api.js';
 import { ToastrService } from 'ngx-toastr';
 import { MatVideoComponent } from 'mat-video/app/video/video.component';
+import { AngularFireDatabase, AngularFireObject } from '@angular/fire/database';
+
 
 const Canvas = canvas.Canvas;
 const Image = canvas.Image;
@@ -38,6 +40,8 @@ export class AppComponent implements  OnInit, AfterViewInit {
   withBoxes = true;
   videoEl;
   stream;
+ private expressionsRef: AngularFireObject<any>;
+ private expressions: Observable<any[]>;
   public webcamImage: WebcamImage = null;
   private doc: Document
   // webcam snapshot trigger
@@ -52,13 +56,16 @@ export class AppComponent implements  OnInit, AfterViewInit {
 
   private showVideo:boolean;
   private loading:boolean;
+  private db:AngularFireDatabase
   //=====================================================================================================//
-  constructor(@Inject(DOCUMENT) document,private toastr: ToastrService
+  constructor(@Inject(DOCUMENT) document,private toastr: ToastrService,db: AngularFireDatabase
   ) {
     this.doc = document;
-    
+    this.db=db;
     this.showVideo=false;
     this.loading=false;
+    this.expressionsRef= db.object('Expressions');
+    this.expressions = this.expressionsRef.valueChanges();
    
   }
 
@@ -111,6 +118,11 @@ export class AppComponent implements  OnInit, AfterViewInit {
 
       
     }
+  }
+
+  public saveExpression(expression:string){
+
+    this.expressionsRef.set({ name: expression });
   }
 
   public startVideoDetection(){
@@ -268,6 +280,7 @@ export class AppComponent implements  OnInit, AfterViewInit {
     console.log()
     const box = fullFaceDescriptions[i]['detection']['box']
     const text =this.getKeyByValue((expressions),max);
+    this.saveExpression(text)
     const drawBox = new faceapi.draw.DrawBox(box, { label: text })
     drawBox.draw(canvas)
   })

@@ -7,8 +7,11 @@ import { AppComponent } from './app.component';
 import { FlexLayoutModule } from '@angular/flex-layout';
 import {ToastrService} from 'ngx-toastr'
 import { CommonModule } from '@angular/common';
-
- 
+import * as firebase from 'firebase';
+import { AngularFireModule } from '@angular/fire';
+import { AngularFirestoreModule } from '@angular/fire/firestore';
+import {AngularFireDatabaseModule} from '@angular/fire/database'
+import { environment } from '../environments/environment';
 import { ToastrModule } from 'ngx-toastr';
 // material
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -60,6 +63,8 @@ import {
     AppRoutingModule,
     WebcamModule,
     FlexLayoutModule,
+    AngularFireModule.initializeApp(environment.firebase),
+    AngularFireDatabaseModule,
     MatAutocompleteModule,
     MatBadgeModule,
     MatBottomSheetModule,
