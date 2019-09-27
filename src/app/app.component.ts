@@ -79,9 +79,9 @@ export class AppComponent implements  OnInit, AfterViewInit {
   console.log(<HTMLImageElement>this.doc.getElementById("inputImage"))
       //detects facesim
       let img=<HTMLImageElement>this.doc.getElementById("inputImage");
-      
+      let imageCanvas=<HTMLCanvasElement>this.doc.getElementById("overlayImage")
      
-      await this.faceRecognition(img,this.imageCanvas)
+      await this.faceRecognition(img,imageCanvas)
       this.loading=false
 
       
@@ -217,7 +217,14 @@ export class AppComponent implements  OnInit, AfterViewInit {
 
     //detects faces
     console.log(videoEl)
-    let fullFaceDescriptions=await this.videoFaceDetection(<HTMLVideoElement>videoEl,canvas)
+    let fullFaceDescriptions:any;
+    //check whether it's an image or video element
+    if (videoEl instanceof HTMLVideoElement){
+      fullFaceDescriptions=await this.videoFaceDetection(<HTMLVideoElement>videoEl,canvas)
+    }else if(videoEl instanceof HTMLImageElement){
+      fullFaceDescriptions=await this.detectFaces(<HTMLImageElement>videoEl,canvas)
+    }
+    
 
 
     const labels = ['sheldon']
@@ -273,11 +280,11 @@ export class AppComponent implements  OnInit, AfterViewInit {
   
 
 
-  public async detectFaces(input:HTMLImageElement) {
+  public async detectFaces(input:HTMLImageElement,canvas:any) {
 
 
     this.inputImage=<HTMLImageElement>this.doc.getElementById("inputImage");
-    this.imageCanvas=<HTMLCanvasElement>this.doc.getElementById("overlayImage")
+  
     
     let width=input['width'];
     let height=input['height'];
@@ -285,15 +292,15 @@ export class AppComponent implements  OnInit, AfterViewInit {
    
     const displaySize = { width:width, height:height }
     console.log(displaySize);
-    console.log(this.imageCanvas);
-    faceapi.matchDimensions(this.imageCanvas, displaySize)
+    console.log(canvas);
+    faceapi.matchDimensions(canvas, displaySize)
 
     let fullFaceDescriptions = await faceapi.detectAllFaces(input).withFaceLandmarks().withFaceDescriptors().withFaceExpressions()
     fullFaceDescriptions = faceapi.resizeResults(fullFaceDescriptions, input)
 
 
     console.log(fullFaceDescriptions)
-    faceapi.draw.drawDetections(this.imageCanvas, fullFaceDescriptions)
+    faceapi.draw.drawDetections(canvas, fullFaceDescriptions)
     return fullFaceDescriptions;
    
     
