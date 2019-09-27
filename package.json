@@ -3,18 +3,23 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "node server.js",
     "build": "ng build",
     "test": "ng test",
     "lint": "ng lint",
-    "e2e": "ng e2e"
+    "e2e": "ng e2e",
+    "postinstall": "ng build --prod"
   },
   "private": true,
   "dependencies": {
+    "@angular-devkit/build-angular": "~0.802.0",
+    "@angular/cli": "~8.2.0",
+    "@angular/compiler-cli": "~8.2.0",
     "@angular/animations": "^8.2.7",
     "@angular/cdk": "^8.2.0",
     "@angular/common": "~8.2.4",
     "@angular/compiler": "~8.2.4",
+    "@angular/language-service": "~8.2.4",
     "@angular/core": "~8.2.4",
     "@angular/fire": "^5.2.1",
     "@angular/flex-layout": "^8.0.0-beta.27",
@@ -59,5 +64,10 @@
     "ts-node": "~7.0.0",
     "tslint": "~5.15.0",
     "typescript": "~3.5.3"
+  }
+  ,
+  "engines": {
+    "node":"v12.9.1",
+    "npm":"6.10.2"
   }
 }
