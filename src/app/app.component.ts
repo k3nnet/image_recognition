@@ -54,8 +54,8 @@ export class AppComponent implements  OnInit, AfterViewInit {
   private videoCanvas:HTMLCanvasElement
   public inputImage:HTMLImageElement
 
-  private showVideo:boolean;
-  private loading:boolean;
+  public showVideo:boolean;
+  public loading:boolean;
   private db:AngularFireDatabase
   //=====================================================================================================//
   constructor(@Inject(DOCUMENT) document,private toastr: ToastrService,db: AngularFireDatabase
