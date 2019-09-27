@@ -63,7 +63,7 @@ import {
     AppRoutingModule,
     WebcamModule,
     FlexLayoutModule,
-    AngularFireModule.initializeApp(environment.firebase),
+    AngularFireModule.initializeApp(environment['firebase']),
     AngularFireDatabaseModule,
     MatAutocompleteModule,
     MatBadgeModule,
