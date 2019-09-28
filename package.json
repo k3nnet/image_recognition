@@ -13,24 +13,27 @@
   "private": true,
   "dependencies": {
     "@angular-devkit/build-angular": "~0.802.0",
-    "@angular/cli": "~8.2.0",
-    "@angular/compiler-cli": "~8.2.0",
     "@angular/animations": "^8.2.7",
     "@angular/cdk": "^8.2.0",
+    "@angular/cli": "~8.2.0",
     "@angular/common": "~8.2.4",
     "@angular/compiler": "~8.2.4",
-    "@angular/language-service": "~8.2.4",
+    "@angular/compiler-cli": "~8.2.0",
     "@angular/core": "~8.2.4",
     "@angular/fire": "^5.2.1",
     "@angular/flex-layout": "^8.0.0-beta.27",
     "@angular/forms": "~8.2.4",
+    "@angular/language-service": "~8.2.4",
     "@angular/material": "^8.2.0",
     "@angular/platform-browser": "~8.2.4",
     "@angular/platform-browser-dynamic": "~8.2.4",
     "@angular/router": "~8.2.4",
     "@tensorflow-models/coco-ssd": "^2.0.0",
     "@tensorflow/tfjs": "^1.2.9",
+    "@types/d3": "^5.7.2",
     "canvas": "^2.6.0",
+    "core-js": "^3.2.1",
+    "d3": "^5.12.0",
     "express": "^4.17.1",
     "face-api.js": "^0.20.1",
     "firebase": "^7.0.0",
@@ -64,10 +67,9 @@
     "ts-node": "~7.0.0",
     "tslint": "~5.15.0",
     "typescript": "~3.5.3"
-  }
-  ,
+  },
   "engines": {
-    "node":"v12.9.1",
-    "npm":"6.10.2"
+    "node": "v12.9.1",
+    "npm": "6.10.2"
   }
 }

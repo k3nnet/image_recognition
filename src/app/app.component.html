@@ -326,19 +326,22 @@
 
       </div>
       <div *ngIf="!showVideo" class="terminal" >
-        <img style="max-width: 400px;" src="../assets/images/bigBang.jpeg" id="inputImage" />
+        <img style="max-width: 400px;" src="../assets/images/howImet.jpeg" id="inputImage" />
         <canvas style="max-width: 400px;padding-top: 30px" class="overlay" id="overlayImage"> </canvas>
       </div>
       
     </div>
-    <mat-progress-bar *ngIf="loading" mode="buffer"></mat-progress-bar>
+    <mat-progress-bar color="Primary" *ngIf="loading" mode="buffer"></mat-progress-bar>
     <div fxLayout="row" >
         
       <div style="flex-grow:1">
-        <button mat-button>upload photo</button><button  (click)="onDetectFaces()" mat-button>start faces</button><button
-          mat-button>expressions</button>
+        <button *ngIf="showVideo" mat-button>upload photo</button>
+        <button  (click)="onDetectFaces()" mat-button>Detect Faces</button>
+        <button (click)="onDetectFaces('expression')" mat-button>Read facial expressions</button>
+        <button *ngIf="showVideo" style="flex-grow:1" (click)="onShowVideo(showVideo)" mat-button>try with webcam <i class="fa fa-camera"></i></button>
       </div>
-      <button style="flex-grow:1" (click)="onShowVideo(showVideo)" mat-button>Use webcam for live feed <i class="fa fa-camera"></i></button>
+     
+     
     </div>
 
 

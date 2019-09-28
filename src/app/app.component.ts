@@ -1,18 +1,13 @@
 import { Component, Input, ViewChild, ElementRef, AfterViewInit,OnInit, Inject } from '@angular/core';
 import * as faceapi from 'face-api.js';
-import { WebcamImage, WebcamInitError, WebcamUtil } from 'ngx-webcam';
-import { Subject, Observable } from 'rxjs';
+import {  Observable } from 'rxjs';
 import * as canvas from 'canvas';
-import * as $ from 'jquery';
 import { DOCUMENT } from '@angular/common';
-import { MtcnnOptions } from 'face-api.js';
 import { ToastrService } from 'ngx-toastr';
-import { MatVideoComponent } from 'mat-video/app/video/video.component';
 import { AngularFireDatabase, AngularFireObject } from '@angular/fire/database';
+import { DrawBox } from 'tfjs-image-recognition-base/build/commonjs/draw';
 
 
-const Canvas = canvas.Canvas;
-const Image = canvas.Image;
 const ImageData = canvas.ImageData;
 
 faceapi.env.monkeyPatch({
@@ -29,37 +24,35 @@ faceapi.env.monkeyPatch({
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements  OnInit, AfterViewInit {
-  @Input() cameraName: string = "";
-  
-  video: HTMLVideoElement;
-  title = 'Facial Expressions recognition';
-  // tiny_face_detector options
-  inputSize = 512;
-  scoreThreshold = 0.5;
-  withFaceLandmarks = false;
-  withBoxes = true;
-  videoEl;
-  stream;
- private expressionsRef: AngularFireObject<any>;
- private expressions: Observable<any[]>;
-  public webcamImage: WebcamImage = null;
-  private doc: Document
-  // webcam snapshot trigger
-  private trigger: Subject<void> = new Subject<void>();
-  // switch to next / previous / specific webcam; true/false: forward/backwards, string: deviceId
-  private nextWebcam: Subject<boolean | string> = new Subject<boolean | string>();
 
-  private  inputVideo: HTMLVideoElement
-  private imageCanvas:HTMLCanvasElement
-  private videoCanvas:HTMLCanvasElement
-  public inputImage:HTMLImageElement
+
+  title = 'Facial Expressions recognition';
+  private db:AngularFireDatabase
+  private expressions: Observable<any[]>;
+  private expressionsRef: AngularFireObject<any>;
 
   public showVideo:boolean;
   public loading:boolean;
-  private db:AngularFireDatabase
-  //=====================================================================================================//
-  constructor(@Inject(DOCUMENT) document,private toastr: ToastrService,db: AngularFireDatabase
-  ) {
+
+  //view properties
+  doc: Document
+  htmlVideoEl: HTMLVideoElement
+  htmlImageEl:HTMLImageElement
+  videoCanvas:HTMLCanvasElement
+  imageCanvas:HTMLCanvasElement
+ 
+  
+  video: HTMLVideoElement;
+ 
+  chartData: Array<any>;
+  inputSize = 512;
+  scoreThreshold = 0.5;
+  withFaceLandmarks = false; //disable face landmark detection
+  withBoxes = true;
+  videoEl;
+  stream;
+
+  constructor(@Inject(DOCUMENT) document,private toastr: ToastrService,db: AngularFireDatabase) {
     this.doc = document;
     this.db=db;
     this.showVideo=false;
@@ -71,48 +64,67 @@ export class AppComponent implements  OnInit, AfterViewInit {
 
   ngOnInit() {
    
-   //load all the models
-   this.loadModels();
+  
+    // give everything a chance to get loaded before starting the animation to reduce choppiness
+    setTimeout(() => {
+        //load models
+        this.loadModels();
+    }, 1000);
+
+    
    
    
    
 
 
   }
-
-
- async onDetectFaces(){
-   this.loading=true;
-  console.log(<HTMLImageElement>this.doc.getElementById("inputImage"))
-      //detects facesim
-      let img=<HTMLImageElement>this.doc.getElementById("inputImage");
-      let imageCanvas=<HTMLCanvasElement>this.doc.getElementById("overlayImage")
-     
-      await this.faceRecognition(img,imageCanvas)
-      this.loading=false
-
-      
-  }
-
-
 
 
   ngAfterViewInit() {
     //prepare image to detect  faces and canvas
-    this.inputVideo = <HTMLVideoElement>this.doc.getElementById("inputVideo")
+    this.htmlVideoEl = <HTMLVideoElement>this.doc.getElementById("htmlVideoEl")
     this.videoCanvas = <HTMLCanvasElement>this.doc.getElementById("overlayVideo")
     console.log("view loaded")
-    console.log(this.inputVideo);
+    console.log(this.htmlVideoEl);
+    console.log(this.videoCanvas)
 
   }
 
+
+ async onDetectFaces(mode:string){
+   let fullFaceDescriptions:any;
+   this.loading=true;
+  console.log(<HTMLImageElement>this.doc.getElementById("inputImage"))
+      //detects facesim
+      this.htmlImageEl=<HTMLImageElement>this.doc.getElementById("inputImage");
+      this.imageCanvas=<HTMLCanvasElement>this.doc.getElementById("overlayImage")
+      console.log(this.htmlImageEl)
+      fullFaceDescriptions=await this.detectFaces(this.htmlImageEl,this.imageCanvas)
+      
+      await this.faceRecognition(fullFaceDescriptions,this.imageCanvas,mode)
+      this.loading=false
+      return fullFaceDescriptions
+  }
+
+  
+
+
+  generateData() {
+    this.chartData = [];
+    for (let i = 0; i < (8 + Math.floor(Math.random() * 10)); i++) {
+      this.chartData.push([
+        `Index ${i}`,
+        Math.floor(Math.random() * 100)
+      ]);
+    }
+  }
   public  async onShowVideo(showVideo){
     console.log(this.doc)
     if(showVideo){
       this.showVideo=false
     }else{
-      console.log(this.inputVideo)
-     await this.loadVideo(this.doc,this.videoFaceDetection,this.faceRecognition,this.getKeyByValue)
+      console.log(this.htmlVideoEl)
+     await this.loadVideo(this.doc)
     
      this.showVideo=true
 
@@ -126,7 +138,7 @@ export class AppComponent implements  OnInit, AfterViewInit {
   }
 
   public startVideoDetection(){
-    console.log(this.inputVideo)
+    console.log(this.htmlVideoEl)
     
     
   }
@@ -149,29 +161,35 @@ export class AppComponent implements  OnInit, AfterViewInit {
 
   }
 
-  public async loadVideo(doc:Document,videoFaceDetection:any,faceRecognition:any,getKeyByValue:any){
-    
-  //stream back the visual to the UI
-   navigator.getUserMedia({ video: {} }, (stream)=>{
-      console.log("loaded video");
-      
-      const videoEl = <HTMLVideoElement>doc.getElementById("inputVideo");
-      const canvas=<HTMLCanvasElement>doc.getElementById('overlayVideo');
-     
-      let videoPlayer = <HTMLVideoElement>videoEl.getElementsByTagName("video")[0];
-      console.log(videoPlayer);
-      videoEl.getElementsByTagName("video")[0]['srcObject'] = stream;
+  public async loadVideo(doc:Document){
 
-      videoPlayer.addEventListener('playing', (videoEl) =>  {
-        console.log(videoEl['srcElement'])
-       
-       setInterval(() => this.faceRecognition(<HTMLVideoElement>videoEl['srcElement'],canvas) ,5000 )
-      });
+    setTimeout(() => {
+      navigator.getUserMedia({ video: {} }, (stream)=>{
+     
+      
+        const videoEl = <HTMLVideoElement>doc.getElementById("htmlVideoEl");
+        const canvas=<HTMLCanvasElement>doc.getElementById('overlayVideo');
+        console.log(<HTMLVideoElement>doc.getElementById("htmlVideoEl"));
+        let videoPlayer = <HTMLVideoElement>videoEl.getElementsByTagName("video")[0];
+        console.log(videoPlayer);
+        videoEl.getElementsByTagName("video")[0]['srcObject'] = stream;
+      
+        videoPlayer.addEventListener('playing',async (videoEl) =>  {
+          console.log(videoEl['srcElement'])
+         let fullFaceDescriptions= await this.videoFaceDetection(<HTMLVideoElement>videoEl['srcElement'],canvas)
+         setInterval(() => this.faceRecognition(fullFaceDescriptions,canvas,"") ,5000 )
+        });
+          
+      }, function (err) { console.error(err); })
         
-    }, function (err) { console.error(err); })
-   
+        
+    }, 3000);
+ //stream back the visual to the UI
+
 
   }
+
+  
 
   async myFunction(videoEl) {
     // run face detection & recognition
@@ -225,26 +243,16 @@ export class AppComponent implements  OnInit, AfterViewInit {
   
   
 
-  public async faceRecognition(videoEl:HTMLVideoElement | HTMLImageElement,canvas:HTMLCanvasElement){
-
-    //detects faces
-    console.log(videoEl)
-    let fullFaceDescriptions:any;
-    //check whether it's an image or video element
-    if (videoEl instanceof HTMLVideoElement){
-      fullFaceDescriptions=await this.videoFaceDetection(<HTMLVideoElement>videoEl,canvas)
-    }else if(videoEl instanceof HTMLImageElement){
-      fullFaceDescriptions=await this.detectFaces(<HTMLImageElement>videoEl,canvas)
-    }
+  public async faceRecognition(fullFaceDescriptions:faceapi.WithFaceExpressions<faceapi.WithFaceDescriptor<faceapi.WithFaceLandmarks<{
+    detection: faceapi.FaceDetection;
+}, faceapi.FaceLandmarks68>>>[],canvas:HTMLCanvasElement,mode:string){
     
-
-
-    const labels = ['sheldon']
-    console.log(this.getKeyByValue)
+    
+    const labels = ['Barney','Lily','Marshall','Robin','Ted']
     const labeledFaceDescriptors = await Promise.all(
       labels.map(async label => {
         // fetch image data from urls and convert blob to HTMLImage element
-        const imgUrl ='../assets/images/'+`${label}.png`
+        const imgUrl ='../assets/images/'+`${label}.jpeg`
         const img = await faceapi.fetchImage(imgUrl)
         
         // detect the face with the highest score in the image and compute it's landmarks and face descriptor
@@ -274,13 +282,21 @@ export class AppComponent implements  OnInit, AfterViewInit {
   results.forEach((bestMatch, i) => {
     console.log(bestMatch['faceExpressions']['angry'])
     let expressions= bestMatch['faceExpressions'];
-   
+    let recognize=bestMatch['faceMatcher'].toString().split(" ")[0]
     let max=Math.max.apply(null, Object.values(expressions)) 
     
-    console.log()
+    console.log(recognize)
     const box = fullFaceDescriptions[i]['detection']['box']
-    const text =this.getKeyByValue((expressions),max);
+    let text =""
     this.saveExpression(text)
+
+    if(mode==="expression"){
+      text =recognize+ ":"+this.getKeyByValue((expressions),max);
+      this.toastr.success(this.getKeyByValue((expressions),max)+" "+recognize);
+    }else{
+      text =recognize;
+    }
+   
     const drawBox = new faceapi.draw.DrawBox(box, { label: text })
     drawBox.draw(canvas)
   })
@@ -296,7 +312,7 @@ export class AppComponent implements  OnInit, AfterViewInit {
   public async detectFaces(input:HTMLImageElement,canvas:any) {
 
 
-    this.inputImage=<HTMLImageElement>this.doc.getElementById("inputImage");
+    this.htmlImageEl=<HTMLImageElement>this.doc.getElementById("inputImage");
   
     
     let width=input['width'];
@@ -313,7 +329,7 @@ export class AppComponent implements  OnInit, AfterViewInit {
 
 
     console.log(fullFaceDescriptions)
-    faceapi.draw.drawDetections(canvas, fullFaceDescriptions)
+    //faceapi.draw.drawDetections(canvas, fullFaceDescriptions)
     return fullFaceDescriptions;
    
     
@@ -324,11 +340,4 @@ export class AppComponent implements  OnInit, AfterViewInit {
 
 
 
-  public get triggerObservable(): Observable<void> {
-    return this.trigger.asObservable();
-  }
-
-  public get nextWebcamObservable(): Observable<boolean | string> {
-    return this.nextWebcam.asObservable();
-  }
 }

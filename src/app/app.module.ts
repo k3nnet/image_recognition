@@ -13,6 +13,9 @@ import { AngularFirestoreModule } from '@angular/fire/firestore';
 import {AngularFireDatabaseModule} from '@angular/fire/database'
 import { environment } from '../environments/environment';
 import { ToastrModule } from 'ngx-toastr';
+import { BarchartComponent } from './shared/barchart/barchart.component';
+import { MiserablesComponent } from './shared/miserables/miserables.component';
+
 // material
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MatVideoModule } from 'mat-video';
@@ -55,7 +58,9 @@ import {
 } from '@angular/material';
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent, 
+    BarchartComponent,
+    MiserablesComponent
   ],
   imports: [
     BrowserModule,
