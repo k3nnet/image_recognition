@@ -309,7 +309,7 @@ export class AppComponent implements  OnInit, AfterViewInit {
   
 
 
-  public async detectFaces(input:HTMLImageElement,canvas:any) {
+  public async detectFaces(input:HTMLImageElement,canvas:HTMLCanvasElement) {
 
 
     this.htmlImageEl=<HTMLImageElement>this.doc.getElementById("inputImage");
@@ -321,7 +321,7 @@ export class AppComponent implements  OnInit, AfterViewInit {
    
     const displaySize = { width:width, height:height }
     console.log(displaySize);
-    console.log(canvas);
+    
     faceapi.matchDimensions(canvas, displaySize)
 
     let fullFaceDescriptions = await faceapi.detectAllFaces(input).withFaceLandmarks().withFaceDescriptors().withFaceExpressions()
