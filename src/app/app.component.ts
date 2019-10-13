@@ -6,6 +6,10 @@ import { DOCUMENT } from '@angular/common';
 import { ToastrService } from 'ngx-toastr';
 import { AngularFireDatabase, AngularFireObject } from '@angular/fire/database';
 import { DrawBox } from 'tfjs-image-recognition-base/build/commonjs/draw';
+import * as d3 from 'd3';
+import {DataModel} from './data/model';
+import {MatVideoModule} from 'mat-video'
+import { MatVideoComponent } from 'mat-video/app/video/video.component';
 
 
 const ImageData = canvas.ImageData;
@@ -24,7 +28,10 @@ faceapi.env.monkeyPatch({
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit, AfterViewInit {
+  @ViewChild('chart',{static:true})
+  @ViewChild('video',{static:false}) matVideo: MatVideoComponent;
 
+  private chartContainer: ElementRef;
 
   title = 'Facial recognition DEMO';
   private db: AngularFireDatabase
@@ -52,6 +59,13 @@ export class AppComponent implements OnInit, AfterViewInit {
   videoEl;
   stream;
 
+  
+
+  @Input()
+  data: DataModel[];
+
+  margin = {top: 20, right: 20, bottom: 30, left: 40};
+
   constructor(@Inject(DOCUMENT) document, private toastr: ToastrService, db: AngularFireDatabase) {
     this.doc = document;
     this.db = db;
@@ -59,12 +73,25 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.loading = false;
     this.expressionsRef = db.object('Expressions');
     this.expressions = this.expressionsRef.valueChanges();
+    this.chartData=[{
+      expression:"neutral",
+      frequency:0
+    },{
+      expression:"sad",
+      frequency:0
+    },{
+      expression:"happy",
+      frequency:0
+    },{
+      expression:"surprised",
+      frequency:0
+    }]
 
   }
 
   ngOnInit() {
 
-
+   
     // give everything a chance to get loaded before starting the animation to reduce choppiness
     setTimeout(() => {
       //load models
@@ -79,14 +106,65 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   }
 
+  createChart():void{
+    d3.select('svg').remove();
+console.log(this.chartContainer)
+    const element =this.doc.getElementById("chart");
+    const data = this.chartData;
+
+    const svg = d3.select(element).append('svg')
+        .attr('width', element.offsetWidth)
+        .attr('height', element.offsetHeight);
+
+    const contentWidth = element.offsetWidth - this.margin.left - this.margin.right;
+    const contentHeight = element.offsetHeight - this.margin.top - this.margin.bottom;
+
+    const x = d3
+      .scaleBand()
+      .rangeRound([0, contentWidth])
+      .padding(0.1)
+      .domain(this.chartData.map(d => d['expression']));
+
+    const y = d3
+      .scaleLinear()
+      .rangeRound([contentHeight, 0])
+      .domain([0, d3.max(data, d => d['frequency'])]);
+
+    const g = svg.append('g')
+      .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
+
+    g.append('g')
+      .attr('class', 'axis axis--x')
+      .attr('transform', 'translate(0,' + contentHeight + ')')
+      .call(d3.axisBottom(x));
+
+    g.append('g')
+      .attr('class', 'axis axis--y')
+      .call(d3.axisLeft(y).ticks(10, '%'))
+      .append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', 6)
+        .attr('dy', '0.71em')
+        .attr('text-anchor', 'end')
+        .text('Frequency');
+
+    g.selectAll('.bar')
+      .data(data)
+      .enter().append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => x(d['letter']))
+        .attr('y', d => y(d['frequency']))
+        .attr('width', x.bandwidth())
+        .attr('height', d => contentHeight - y(d['frequency']));
+  }
+
 
   ngAfterViewInit() {
     //prepare image to detect  faces and canvas
     this.htmlVideoEl = <HTMLVideoElement>this.doc.getElementById("htmlVideoEl")
     this.videoCanvas = <HTMLCanvasElement>this.doc.getElementById("overlayVideo")
     console.log("view loaded")
-    console.log(this.htmlVideoEl);
-    console.log(this.videoCanvas)
+   
 
   }
 
@@ -162,21 +240,24 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   public async loadVideo(doc: Document) {
-
+   
    navigator.getUserMedia({ video: {} }, (stream) => {
-
-
-        const videoEl = <HTMLVideoElement>doc.getElementById("htmlVideoEl");
+    console.log(this.video)
+ const videoEl = <HTMLVideoElement>doc.getElementById("htmlVideoEl");
         const canvas = <HTMLCanvasElement>doc.getElementById('overlayVideo');
-        console.log(<HTMLVideoElement>doc.getElementById("htmlVideoEl"));
+       
         let videoPlayer = <HTMLVideoElement>doc.getElementById("htmlVideoEl").getElementsByTagName("video")[0];
-        console.log(videoPlayer);
+        console.log( videoEl.getElementsByTagName("video")[0]['srcObject']);
+        
         videoEl.getElementsByTagName("video")[0]['srcObject'] = stream;
+        console.log(videoEl.getElementsByTagName("video")[0]['srcObject'])
 
-        videoPlayer.addEventListener('playing', async (videoEl) => {
+        videoPlayer.addEventListener('play', async (videoEl) => {
          
-            var func=await this.myFunction(videoEl);
-            setInterval(func,3000);
+            console.log(videoEl)
+          
+            await this.myFunction(videoEl,canvas);
+          
             
         });
 
@@ -190,12 +271,14 @@ export class AppComponent implements OnInit, AfterViewInit {
 
 
 
-  async myFunction(videoEl) {
+  async myFunction(videoEl,canvas) {
     // run face detection & recognition
     // ...
         console.log(videoEl['srcElement'])
-          let fullFaceDescriptions = this.videoFaceDetection(<HTMLVideoElement>videoEl['srcElement'], canvas)
-          
+        
+       await this.videoFaceDetection(<HTMLVideoElement>videoEl['srcElement'], canvas)
+
+        setTimeout(async () => await this.myFunction(videoEl,canvas),5000)  
   }
 
 
@@ -223,20 +306,40 @@ export class AppComponent implements OnInit, AfterViewInit {
       scoreThresholds: [0.6, 0.7, 0.7],
       // mininum face size to expect, the higher the faster processing will be,
       // but smaller faces won't be detected
-      minFaceSize: 200
+      minFaceSize: 20
     }
     const options = new faceapi.MtcnnOptions(mtcnnParams)
     const displaySize = { width: width, height: height }
-    faceapi.matchDimensions(canvas, displaySize)
+    await faceapi.matchDimensions(canvas, displaySize)
 
     //detects faces on a screen
     let fullFaceDescriptions = await faceapi.detectAllFaces(input, options).withFaceLandmarks().withFaceDescriptors().withFaceExpressions()
-    console.log(fullFaceDescriptions)
-    fullFaceDescriptions = await faceapi.resizeResults(fullFaceDescriptions, input)
-    faceapi.draw.drawDetections(canvas, fullFaceDescriptions)
+    if(fullFaceDescriptions.length>0){
+      console.log(fullFaceDescriptions[0]['expressions'])
+      fullFaceDescriptions = await faceapi.resizeResults(fullFaceDescriptions, input)
+      //await faceapi.draw.drawDetections(canvas, fullFaceDescriptions)
+  
+       this.faceRecognition(fullFaceDescriptions, canvas, "expression")
+  
+      var max=Math.max.apply(null, Object.values(fullFaceDescriptions[0]['expressions']))
+      //count expression
+      var expression=this.getKeyByValue(fullFaceDescriptions[0]['expressions'],max)
+      console.log(expression)
+      this.chartData.map((val)=>{
+        console.log(val['expression'])
+        if(val['expression']===expression){
+          val['frequency']++;
+        }
+        return val;
+      })
+      console.log(this.chartData)
+      this.createChart()
+     
+    }else{
 
-    this.faceRecognition(fullFaceDescriptions, canvas, "")
-
+    }
+   
+    
 
 
   }
@@ -309,6 +412,8 @@ export class AppComponent implements OnInit, AfterViewInit {
   public getKeyByValue(object, value) {
     return Object.keys(object).find(key => object[key] === value);
   }
+
+  
 
 
 
