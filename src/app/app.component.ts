@@ -40,6 +40,7 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   public showVideo: boolean;
   public loading: boolean;
+  public showGraph:boolean;
 
   //view properties
   doc: Document
@@ -64,13 +65,14 @@ export class AppComponent implements OnInit, AfterViewInit {
   @Input()
   data: DataModel[];
 
-  margin = {top: 20, right: 20, bottom: 30, left: 40};
+  margin = {top: 20, right: 20, bottom: 20, left: 40};
 
   constructor(@Inject(DOCUMENT) document, private toastr: ToastrService, db: AngularFireDatabase) {
     this.doc = document;
     this.db = db;
     this.showVideo = false;
     this.loading = false;
+    this.showGraph=false;
     this.expressionsRef = db.object('Expressions');
     this.expressions = this.expressionsRef.valueChanges();
     this.chartData=[{
@@ -108,16 +110,20 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   createChart():void{
     d3.select('svg').remove();
-console.log(this.chartContainer)
+    
     const element =this.doc.getElementById("chart");
     const data = this.chartData;
+   
 
     const svg = d3.select(element).append('svg')
         .attr('width', element.offsetWidth)
         .attr('height', element.offsetHeight);
+    
+ 
 
     const contentWidth = element.offsetWidth - this.margin.left - this.margin.right;
     const contentHeight = element.offsetHeight - this.margin.top - this.margin.bottom;
+  
 
     const x = d3
       .scaleBand()
@@ -140,7 +146,7 @@ console.log(this.chartContainer)
 
     g.append('g')
       .attr('class', 'axis axis--y')
-      .call(d3.axisLeft(y).ticks(10, '%'))
+      .call(d3.axisLeft(y).ticks(1, '%'))
       .append('text')
         .attr('transform', 'rotate(-90)')
         .attr('y', 6)
@@ -151,8 +157,8 @@ console.log(this.chartContainer)
     g.selectAll('.bar')
       .data(data)
       .enter().append('rect')
-        .attr('class', 'bar')
-        .attr('x', d => x(d['letter']))
+        .attr( 'fill','steelblue')
+        .attr('x', d => x(d['expression']))
         .attr('y', d => y(d['frequency']))
         .attr('width', x.bandwidth())
         .attr('height', d => contentHeight - y(d['frequency']));
@@ -240,10 +246,10 @@ console.log(this.chartContainer)
   }
 
   public async loadVideo(doc: Document) {
-   
+    console.log( <HTMLVideoElement>doc.getElementById("htmlVideoEl"))
    navigator.getUserMedia({ video: {} }, (stream) => {
     console.log(this.video)
- const videoEl = <HTMLVideoElement>doc.getElementById("htmlVideoEl");
+        const videoEl = <HTMLVideoElement>doc.getElementById("htmlVideoEl");
         const canvas = <HTMLCanvasElement>doc.getElementById('overlayVideo');
        
         let videoPlayer = <HTMLVideoElement>doc.getElementById("htmlVideoEl").getElementsByTagName("video")[0];
@@ -255,7 +261,7 @@ console.log(this.chartContainer)
         videoPlayer.addEventListener('play', async (videoEl) => {
          
             console.log(videoEl)
-          
+            this.showGraph=true;
             await this.myFunction(videoEl,canvas);
           
             

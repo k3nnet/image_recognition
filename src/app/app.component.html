@@ -309,6 +309,7 @@
     src="https://toolbox.brightspotcdn.com/dims4/default/985b12d/2147483647/resize/800x%3E/quality/90/?url=http%3A%2F%2Fziff-davis-brightspot.s3.amazonaws.com%2F4d%2F8f%2Fd56fb664420895704f2ce6215618%2Fcities-states-push-back-on-facial-recognition-software.jpg" />
   <span>Facial recognition Demo</span>
   <div class="spacer"></div>
+  <button  style="flex-grow:1" (click)="onShowVideo(showVideo)" mat-button>use webcam <i class="fa fa-camera"></i></button>
 
 </div>
 
@@ -329,8 +330,8 @@
         <img src="../assets/images/howImet.jpeg" id="inputImage" />
         <canvas style="padding-top: 30px" class="overlay" id="overlayImage"> </canvas>
       </div>
-      <div>
-        <h1>Bar Chart</h1>
+      <div *ngIf="showGraph" class="terminal" style="max-width: 400px;max-height:300px;justify-content: center;">
+        <h5 style="margin-left: 40px;" >Facial expression frequency graph</h5>
         <div #chart id="chart"></div>
        
       </div>
@@ -345,7 +346,7 @@
         <button *ngIf="showVideo" mat-button>upload photo</button>
         <button  (click)="onDetectFaces('reco')" mat-button>Facial recognition</button>
         <button (click)="onDetectFaces('expression')" mat-button>facial expressions</button>
-        <button  style="flex-grow:1" (click)="onShowVideo(showVideo)" mat-button>try with webcam <i class="fa fa-camera"></i></button>
+       
       </div>
      
      
