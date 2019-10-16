@@ -246,28 +246,36 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   public async loadVideo(doc: Document) {
-    console.log( <HTMLVideoElement>doc.getElementById("htmlVideoEl"))
-   navigator.getUserMedia({ video: {} }, (stream) => {
-    console.log(this.video)
-        const videoEl = <HTMLVideoElement>doc.getElementById("htmlVideoEl");
-        const canvas = <HTMLCanvasElement>doc.getElementById('overlayVideo');
-       
-        let videoPlayer = <HTMLVideoElement>doc.getElementById("htmlVideoEl").getElementsByTagName("video")[0];
-        console.log( videoEl.getElementsByTagName("video")[0]['srcObject']);
-        
-        videoEl.getElementsByTagName("video")[0]['srcObject'] = stream;
-        console.log(videoEl.getElementsByTagName("video")[0]['srcObject'])
+    console.log( <HTMLVideoElement>doc.getElementById("htmlVideoEl"));
 
-        videoPlayer.addEventListener('play', async (videoEl) => {
+    const constraints={ audio: false, video: { facingMode: "user" } }
+    navigator.mediaDevices.getUserMedia(constraints).then((stream)=>{
+      console.log(this.video)
+      const videoEl = <HTMLVideoElement>doc.getElementById("htmlVideoEl");
+      const canvas = <HTMLCanvasElement>doc.getElementById('overlayVideo');
+      console.log(videoEl.getElementsByTagName("video")['src'])
+
+      const mediaSource=new MediaSource();
+      const url=URL.createObjectURL(mediaSource);
+      let videoPlayer = <HTMLVideoElement> videoEl.getElementsByTagName("video")[0];
+      console.log( videoEl.getElementsByTagName("video")[0]['srcObject']);
+      
+      videoEl.getElementsByTagName("video")[0]['srcObject'] = stream;
+      console.log(videoEl.getElementsByTagName("video")[0]['srcObject'])
+      videoPlayer.addEventListener('play', async (videoEl) => {
          
-            console.log(videoEl)
-            this.showGraph=true;
-            await this.myFunction(videoEl,canvas);
-          
-            
-        });
+        console.log(videoEl)
+        this.showGraph=true;
+        await this.myFunction(videoEl,canvas);
+      
+        
+    });
+    }).catch(err=>{
+      console.log("unhanled error: "+ err);
+    })
+  
 
-      }, function (err) { console.error(err); })
+
 
   
     //stream back the visual to the UI
@@ -284,7 +292,7 @@ export class AppComponent implements OnInit, AfterViewInit {
         
        await this.videoFaceDetection(<HTMLVideoElement>videoEl['srcElement'], canvas)
 
-        setTimeout(async () => await this.myFunction(videoEl,canvas),5000)  
+        setTimeout(async () => await this.myFunction(videoEl,canvas))  
   }
 
 
@@ -316,7 +324,7 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
     const options = new faceapi.MtcnnOptions(mtcnnParams)
     const displaySize = { width: width, height: height }
-    await faceapi.matchDimensions(canvas, displaySize)
+     faceapi.matchDimensions(canvas, displaySize)
 
     //detects faces on a screen
     let fullFaceDescriptions = await faceapi.detectAllFaces(input, options).withFaceLandmarks().withFaceDescriptors().withFaceExpressions()
@@ -325,11 +333,14 @@ export class AppComponent implements OnInit, AfterViewInit {
       fullFaceDescriptions = await faceapi.resizeResults(fullFaceDescriptions, input)
       //await faceapi.draw.drawDetections(canvas, fullFaceDescriptions)
   
-       this.faceRecognition(fullFaceDescriptions, canvas, "expression")
+     
   
       var max=Math.max.apply(null, Object.values(fullFaceDescriptions[0]['expressions']))
       //count expression
       var expression=this.getKeyByValue(fullFaceDescriptions[0]['expressions'],max)
+    const box = fullFaceDescriptions[0]['detection']['box']
+     const drawBox = new faceapi.draw.DrawBox(box, { label: expression})
+     drawBox.draw(canvas)
       console.log(expression)
       this.chartData.map((val)=>{
         console.log(val['expression'])
@@ -339,6 +350,7 @@ export class AppComponent implements OnInit, AfterViewInit {
         return val;
       })
       console.log(this.chartData)
+      /// faceapi.draw.drawDetections(canvas, fullFaceDescriptions)
       this.createChart()
      
     }else{
@@ -391,7 +403,7 @@ export class AppComponent implements OnInit, AfterViewInit {
 
     })
    
-    results.forEach((bestMatch, i) => {
+  results.forEach((bestMatch, i) => {
       console.log(bestMatch['faceExpressions']['angry'])
       let expressions = bestMatch['faceExpressions'];
       let recognize = bestMatch['faceMatcher'].toString().split(" ")[0]
