@@ -15,3 +15,44 @@
 .axis--x path {
     display: none;
 }
+
+.mat-card {
+    margin-bottom: 30px;
+    height: 250px;
+    color: #4B4F56;
+  }
+  .toolbar {
+    position: sticky;
+    position: -webkit-sticky; /* For macOS/iOS Safari */
+    top: 0; /* Sets the sticky toolbar to be on top */
+    z-index: 1000; /* Ensure that your app's content doesn't overlap the toolbar */
+    cursor: default;
+}
+
+.toolbar-icon {
+  width: 26px;
+  height: 26px;
+  font-size: 26px;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+
+
+.toolbar a {
+  color: #263238;
+}
+
+.main-container {
+  max-width: 1400px;
+  margin: 40px auto;
+  padding: 0 24px;
+  position: relative;
+}
+
+.mat-icon svg {
+  height: 24px;
+  width: 24px;
+}

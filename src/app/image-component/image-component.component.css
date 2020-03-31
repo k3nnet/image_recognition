@@ -1,0 +1,70 @@
+ 
+    .terminal {
+        position: relative;
+        padding-top: 30px;
+        border-radius: 6px;
+        margin-top: 8px;
+        overflow: hidden;
+        background-color: rgb(15, 15, 16);
+        width: 400px;
+        height: 300px;
+        margin-top: 5%;
+    }
+  
+  
+    /* resize images */
+    .terminal img {
+        width: 100%;
+        height: auto;
+    }
+  
+    .terminal::before {
+        content: "\2022 \2022 \2022";
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 4px;
+        background: rgb(58, 58, 58);
+        color: #c2c3c4;
+        width: 100%;
+        font-size: 2rem;
+        line-height: 0;
+        padding: 14px 0;
+        text-indent: 4px;
+    }
+  
+    .terminal pre {
+        font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+        color: white;
+        padding: 0 1rem 1rem;
+        margin: 0;
+    }
+     /* Responsive Styles */
+     @media screen and (max-width: 767px) {
+  
+        .card-container>*:not(.circle-link),
+        .terminal {
+            width: 100%;
+        }
+  
+        .card:not(.highlight-card) {
+            height: 16px;
+            margin: 8px 0;
+        }
+  
+        .card.highlight-card span {
+            margin-left: 72px;
+        }
+  
+        svg#rocket-smoke {
+            right: 120px;
+            transform: rotate(-5deg);
+        }
+    }
+  
+    @media screen and (max-width: 575px) {
+        svg#rocket-smoke {
+            display: none;
+            visibility: hidden;
+        }
+    }

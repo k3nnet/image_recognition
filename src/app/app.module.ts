@@ -15,7 +15,8 @@ import { environment } from '../environments/environment';
 import { ToastrModule } from 'ngx-toastr';
 import { BarchartComponent } from './shared/barchart/barchart.component';
 import { MiserablesComponent } from './shared/miserables/miserables.component';
-
+import { VideoComponent } from './video/video.component'
+import{ImageComponentComponent} from './image-component/image-component.component'
 // material
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MatVideoModule } from 'mat-video';
@@ -60,7 +61,9 @@ import {
   declarations: [
     AppComponent, 
     BarchartComponent,
-    MiserablesComponent
+    MiserablesComponent,
+    VideoComponent,
+    ImageComponentComponent
   ],
   imports: [
     BrowserModule,
