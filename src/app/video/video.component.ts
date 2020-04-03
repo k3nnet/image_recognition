@@ -131,7 +131,7 @@ export class VideoComponent implements OnInit  {
 
   public async loadVideo(mode?: string) {
  
-    const constraints={ audio: false, video: { facingMode: "user" ,video: { frameRate: { ideal: 10, max: 15 } }} }
+    var constraints = { video: true, audio: false };
     navigator.mediaDevices.getUserMedia(constraints).then((stream)=>{
     
       //grab video element and the canvas element
@@ -367,7 +367,7 @@ export class VideoComponent implements OnInit  {
     }
     const options = new faceapi.MtcnnOptions(mtcnnParams)
 
-    const labels = ['Barney', 'Lilly', 'Marshall', 'Robin','Ted','kenneth']
+    const labels = ['Barney', 'Lilly', 'Marshall', 'Robin','Ted']
     this.labeledFaceDescriptors=await Promise.all(
       labels.map(async label => {
         // fetch image data from urls and convert blob to HTMLImage element
