@@ -465,14 +465,14 @@
           </mat-card-content>
           <mat-card-actions>
             <div class="content">
-                <button mat-raised-button color="primary" (click)="onDetectFaces('reco')" [disabled]="loadingdata">Facial recognition</button>
-                <button mat-raised-button color="primary" (click)="onDetectFaces('expression')" [disabled]="loadingdata">Facial Expression</button>
+                <button mat-raised-button color="primary" (click)="onDetectFaces('reco')" [disabled]="loading">Facial recognition</button>
+                <button mat-raised-button color="primary" (click)="onDetectFaces('expression')" [disabled]="loading">Facial Expression</button>
     
               </div>
              
               
-              <div style="float:left; padding:5px;" *ngIf="loadingdata">
-                <mat-spinner [diameter]="30" *ngIf="loadingdata"></mat-spinner>
+              <div style="float:left; padding:5px;" *ngIf="loading">
+                <mat-spinner [diameter]="30" *ngIf="loading"></mat-spinner>
               </div>
           </mat-card-actions>
     </mat-card>
