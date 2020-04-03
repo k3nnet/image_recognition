@@ -25,7 +25,7 @@ faceapi.env.monkeyPatch({
 })
 
 
-export class VideoComponent implements OnInit, AfterViewInit  {
+export class VideoComponent implements OnInit  {
   public loading: boolean;
 
 
@@ -88,6 +88,7 @@ export class VideoComponent implements OnInit, AfterViewInit  {
     
 
    }
+ 
 
   ngOnInit() {
 
@@ -129,10 +130,7 @@ export class VideoComponent implements OnInit, AfterViewInit  {
   }
 
   public async loadVideo(mode?: string) {
-    console.log(mode)
-    if(mode){
-      this.isStarted=true;
-    }
+ 
     const constraints={ audio: false, video: { facingMode: "user" ,video: { frameRate: { ideal: 10, max: 15 } }} }
     navigator.mediaDevices.getUserMedia(constraints).then((stream)=>{
     
@@ -142,15 +140,13 @@ export class VideoComponent implements OnInit, AfterViewInit  {
       let videoPlayer = <HTMLVideoElement> videoEl.getElementsByTagName("video")[0];
      
       
+      //attaching our webcam stream to the video element 
       videoPlayer['srcObject'] = stream;
      
       videoPlayer.addEventListener('play', async (videoEl) => {
          
         console.log(videoEl)
-        
-        if(this.isStarted){
-          await this.run(videoEl,canvas,mode);
-        }
+        await this.run(videoEl,canvas,mode);
         
       
         
@@ -158,12 +154,7 @@ export class VideoComponent implements OnInit, AfterViewInit  {
     }).catch(err=>{
       console.log("unhanled error: "+ err);
     })
-  
-
-
-
-  
-    //stream back the visual to the UI
+ 
 
 
   }
@@ -175,13 +166,14 @@ export class VideoComponent implements OnInit, AfterViewInit  {
     }else{
       this.isExpression=false
     }
-    this.loading = true;
+    
     await this.loadVideo(mode)
   
-    this.loading = false;
+   
   }
   public async videoFaceDetection(input: HTMLVideoElement, canvas: HTMLCanvasElement,mode:string ) {
 
+    this.loading = true;
     let terminalbox=<HTMLDivElement> this.doc.getElementsByClassName("terminal")[0]
  
     console.log(terminalbox)
@@ -222,6 +214,7 @@ export class VideoComponent implements OnInit, AfterViewInit  {
     console.log("face recognitions started")
     await this.faceRecognition(fullFaceDescriptions,canvas,mode)
     console.log("face recongition ended")
+    this.loading = false;
    
     
   
@@ -294,7 +287,7 @@ export class VideoComponent implements OnInit, AfterViewInit  {
         
        await this.videoFaceDetection(<HTMLVideoElement>videoEl['srcElement'], canvas,modeLocal)
 
-       await setTimeout(async () => await this.run(videoEl,canvas,modeLocal),5000)  
+       await setTimeout(async () => await this.run(videoEl,canvas,modeLocal),2000)  
   }
   public async faceRecognition(fullFaceDescriptions: faceapi.WithFaceExpressions<faceapi.WithFaceDescriptor<faceapi.WithFaceLandmarks<{
     detection: faceapi.FaceDetection;
@@ -318,12 +311,12 @@ export class VideoComponent implements OnInit, AfterViewInit  {
     })
    
   results.forEach((bestMatch, i) => {
-      console.log(bestMatch['faceExpressions']['angry'])
+    
       let expressions = bestMatch['faceExpressions'];
       let recognize = bestMatch['faceMatcher'].toString().split(" ")[0]
       let max = Math.max.apply(null, Object.values(expressions))
 
-      console.log(recognize)
+      
       const box = fullFaceDescriptions[i]['detection']['box']
       let text = ""
       
@@ -374,7 +367,7 @@ export class VideoComponent implements OnInit, AfterViewInit  {
     }
     const options = new faceapi.MtcnnOptions(mtcnnParams)
 
-    const labels = ['Barney', 'Lily', 'Marshall', 'Robin', 'Gadifele','kenneth']
+    const labels = ['Barney', 'Lilly', 'Marshall', 'Robin','Ted','kenneth']
     this.labeledFaceDescriptors=await Promise.all(
       labels.map(async label => {
         // fetch image data from urls and convert blob to HTMLImage element
